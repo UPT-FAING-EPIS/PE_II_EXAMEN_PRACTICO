@@ -23,7 +23,7 @@ import {
 import type { SystemRole, UserSummary } from '../types'
 import './UsersPage.css'
 
-/* ---- Schemas ---- */
+/*Schemas*/
 
 const createSchema = z.object({
   firstName: z.string().min(1, 'Requerido').max(120),
@@ -59,6 +59,9 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' })
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const USERS_PER_PAGE = 10
 
   const refresh = useCallback(() => {
     setLoading(true)
@@ -71,6 +74,9 @@ export default function UsersPage() {
 
   useEffect(() => { refresh() }, [refresh])
 
+  // Reiniciar a la primera página si cambia la lista de usuarios
+  useEffect(() => { setCurrentPage(1) }, [users.length])
+
   async function handleToggleStatus(u: UserSummary) {
     try {
       const updated = u.status === 'ACTIVO' ? await disableUser(u.id) : await enableUser(u.id)
@@ -79,6 +85,10 @@ export default function UsersPage() {
       setError(e instanceof Error ? e.message : 'Error al cambiar estado.')
     }
   }
+
+  // Paginación: calcular usuarios a mostrar
+  const totalPages = Math.ceil(users.length / USERS_PER_PAGE)
+  const paginatedUsers = users.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE)
 
   return (
     <div className="upage">
@@ -121,7 +131,7 @@ export default function UsersPage() {
                 <td><div className="upage-skel upage-skel--sm" /></td>
               </tr>
             ))}
-            {!loading && users.map((u) => (
+            {!loading && paginatedUsers.map((u) => (
               <tr key={u.id}>
                 <td>
                   <div className="upage-user-cell">
@@ -176,6 +186,23 @@ export default function UsersPage() {
         </table>
       </div>
 
+      {/* Controles de paginación */}
+      {!loading && totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '18px 0' }}>
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{ marginRight: 8 }}
+          >Anterior</button>
+          <span style={{ alignSelf: 'center' }}>Página {currentPage} de {totalPages}</span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{ marginLeft: 8 }}
+          >Siguiente</button>
+        </div>
+      )}
+
       {/* Modals */}
       {modal.kind === 'create' && (
         <CreateModal
@@ -200,7 +227,7 @@ export default function UsersPage() {
   )
 }
 
-/* ---- Create Modal ---- */
+/*Create Modal*/
 
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (u: UserSummary) => void }) {
   const [submitting, setSubmitting] = useState(false)
@@ -267,7 +294,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   )
 }
 
-/* ---- Edit Modal ---- */
+/*Edit Modal*/
 
 function EditModal({ user, onClose, onUpdated }: { user: UserSummary; onClose: () => void; onUpdated: (u: UserSummary) => void }) {
   const [submitting, setSubmitting] = useState(false)
@@ -328,7 +355,7 @@ function EditModal({ user, onClose, onUpdated }: { user: UserSummary; onClose: (
   )
 }
 
-/* ---- Credentials Modal ---- */
+/*Credentials Modal*/
 
 function CredentialsModal({ user, onClose }: { user: UserSummary; onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false)
@@ -379,7 +406,7 @@ function CredentialsModal({ user, onClose }: { user: UserSummary; onClose: () =>
   )
 }
 
-/* ---- Shared ---- */
+/*Shared*/
 
 function ModalField({ children, error, label }: { children: React.ReactNode; error?: string; label: string }) {
   return (
